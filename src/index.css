@@ -1,7 +1,9 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* CSS változók - Sötét téma alapértelmezett */
 :root {
   --background: 222 47% 4%;
   --foreground: 213 31% 91%;
@@ -22,91 +24,452 @@
   --destructive: 0 63% 31%;
   --destructive-foreground: 210 40% 98%;
   --ring: 262 83% 58%;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
-  /* Card Editor specific colors */
+  /* Fejlett színek és effektek */
   --gradient-start: 222 84% 5%;
   --gradient-middle: 262 83% 20%;
   --gradient-end: 222 84% 5%;
-  --glass-bg: 222 47% 4%;
-  --glass-border: 218 11% 25%;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
   --accent-purple: 262 83% 58%;
-  --accent-blue: 217 91% 60%;
+  --accent-cyan: 217 91% 60%;
   --accent-pink: 316 73% 69%;
+  --accent-green: 158 64% 52%;
+  --accent-yellow: 45 93% 50%;
+
+  /* Animáció változók */
+  --animation-speed-slow: 3s;
+  --animation-speed-normal: 1s;
+  --animation-speed-fast: 0.3s;
+
+  /* Szöveg effektek */
+  --text-glow: 0 0 10px rgba(139, 92, 246, 0.5);
+  --text-shadow-strong: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --primary: 207 90% 54%;
-  --primary-foreground: 211 100% 99%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --ring: 240 4.9% 83.9%;
+.light {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --primary: 262 83% 58%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 262 83% 58%;
+
+  --glass-bg: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
+/* Alapvető stílusok */
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
     @apply font-sans antialiased;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Szöveg kijelölés egyedi stílusa */
+  ::selection {
+    background: rgba(139, 92, 246, 0.3);
+    color: white;
+  }
+
+  ::-moz-selection {
+    background: rgba(139, 92, 246, 0.3);
+    color: white;
+  }
+
+  /* Scrollbar stílusok */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #8B5CF6, #06B6D4);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7C3AED, #0891B2);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+  }
+
+  /* Firefox scrollbar */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #8B5CF6 rgba(0, 0, 0, 0.1);
   }
 }
 
-/* Editor specific styles */
+/* Komponens stílusok */
+@layer components {
+  /* Glass morphism effekt */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Neon effektek */
+  .neon-border {
+    border: 2px solid transparent;
+    background: linear-gradient(45deg, #8B5CF6, #06B6D4, #10B981, #EC4899) border-box;
+    background-clip: border-box;
+    -webkit-background-clip: border-box;
+    animation: neon-glow 2s ease-in-out infinite alternate;
+  }
+
+  .neon-text {
+    color: transparent;
+    background: linear-gradient(45deg, #8B5CF6, #06B6D4, #10B981);
+    background-clip: text;
+    -webkit-background-clip: text;
+    text-shadow: var(--text-glow);
+    animation: text-glow 2s ease-in-out infinite alternate;
+  }
+
+  /* Gradient háttér animáció */
+  .gradient-bg-animated {
+    background: linear-gradient(270deg, #8B5CF6, #06B6D4, #10B981, #EC4899);
+    background-size: 800% 800%;
+    animation: gradient-shift 8s ease-in-out infinite;
+  }
+
+  /* Interaktív gombok */
+  .btn-neon {
+    @apply relative px-6 py-3 font-semibold text-white rounded-lg;
+    background: linear-gradient(45deg, #8B5CF6, #06B6D4);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .btn-neon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .btn-neon:hover::before {
+    left: 100%;
+  }
+
+  .btn-neon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
+  }
+
+  /* Kártya komponensek */
+  .card-modern {
+    @apply glass rounded-2xl p-6 transition-all duration-300;
+    transform-style: preserve-3d;
+  }
+
+  .card-modern:hover {
+    transform: translateY(-5px) rotateX(5deg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Loading animációk */
+  .loading-dots {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .loading-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #8B5CF6;
+    animation: loading-bounce 1.4s ease-in-out infinite both;
+  }
+
+  .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+  .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes loading-bounce {
+    0%, 80%, 100% {
+      transform: scale(0);
+    }
+    40% {
+      transform: scale(1);
+    }
+  }
+
+  /* Notification stílusok */
+  .notification-success {
+    @apply glass border-green-500/50;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+  }
+
+  .notification-error {
+    @apply glass border-red-500/50;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+  }
+
+  .notification-warning {
+    @apply glass border-yellow-500/50;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+  }
+}
+
+/* Utility osztályok */
+@layer utilities {
+  /* Responsive szöveg méretek */
+  .text-responsive {
+    font-size: clamp(1rem, 4vw, 2rem);
+  }
+
+  .text-responsive-sm {
+    font-size: clamp(0.875rem, 3vw, 1.125rem);
+  }
+
+  .text-responsive-lg {
+    font-size: clamp(1.5rem, 6vw, 3rem);
+  }
+
+  /* Animáció késleltetések */
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+  .animation-delay-700 { animation-delay: 700ms; }
+  .animation-delay-1000 { animation-delay: 1000ms; }
+  .animation-delay-2000 { animation-delay: 2000ms; }
+  .animation-delay-3000 { animation-delay: 3000ms; }
+
+  /* 3D transform effektek */
+  .transform-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  /* Egyedi margin és padding */
+  .m-safe {
+    margin: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .p-safe {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* Fejlett grid rendszer */
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .grid-auto-fill {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  /* Interaktív elemek */
+  .interactive {
+    @apply transition-all duration-300 cursor-pointer;
+  }
+
+  .interactive:hover {
+    @apply scale-105;
+  }
+
+  .interactive:active {
+    @apply scale-95;
+  }
+
+  /* Szöveg effektek */
+  .text-gradient {
+    background: linear-gradient(45deg, #8B5CF6, #06B6D4, #10B981);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .text-shadow {
+    text-shadow: var(--text-shadow-strong);
+  }
+
+  /* Focus állapotok */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-transparent;
+  }
+
+  /* Scroll snap */
+  .scroll-snap-x {
+    scroll-snap-type: x mandatory;
+  }
+
+  .scroll-snap-y {
+    scroll-snap-type: y mandatory;
+  }
+
+  .scroll-snap-start {
+    scroll-snap-align: start;
+  }
+
+  .scroll-snap-center {
+    scroll-snap-align: center;
+  }
+}
+
+/* Speciális animációk és effektek */
+@keyframes particles-float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-30px) translateX(20px) rotate(120deg);
+  }
+  66% {
+    transform: translateY(20px) translateX(-20px) rotate(240deg);
+  }
+}
+
+@keyframes holographic {
+  0% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(180deg);
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* Responsive design fejlesztések */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    @apply text-sm p-4;
+  }
+  
+  .glass {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+@media (min-width: 2560px) {
+  .ultra-wide {
+    max-width: 2048px;
+    margin: 0 auto;
+  }
+}
+
+/* Print stílusok */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-friendly {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Accessibility fejlesztések */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .glass {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid black;
+  }
+}
+
+/* Fejlett editor stílusok */
 .editor-theme {
-  background-color: hsl(var(--editor-dark));
-  color: hsl(var(--editor-text));
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-start)), 
+    hsl(var(--gradient-middle)), 
+    hsl(var(--gradient-end))
+  );
+  color: hsl(var(--foreground));
 }
 
-.editor-medium {
-  background-color: hsl(var(--editor-medium));
+.editor-modern {
+  @apply glass rounded-xl;
+  background: linear-gradient(135deg, 
+    rgba(139, 92, 246, 0.1), 
+    rgba(6, 182, 212, 0.1)
+  );
 }
 
-.editor-light {
-  background-color: hsl(var(--editor-light));
-}
-
-.editor-border {
-  border-color: hsl(var(--editor-border));
-}
-
-.editor-text-muted {
-  color: hsl(var(--editor-text-muted));
-}
-
-.editor-accent {
-  background-color: hsl(var(--editor-accent));
-}
-
-.editor-accent:hover {
-  background-color: hsl(var(--editor-accent-hover));
-}
-
-/* Slide canvas aspect ratio */
 .slide-canvas {
   aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.05), 
+    rgba(255, 255, 255, 0.02)
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
-/* Custom scrollbar for sidebar */
+/* Továbbfejlesztett scrollbar a sidebar-hoz */
 .slide-list-scroll {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--editor-light)) hsl(var(--editor-dark));
+  scrollbar-color: rgba(139, 92, 246, 0.5) transparent;
 }
 
 .slide-list-scroll::-webkit-scrollbar {
@@ -114,14 +477,40 @@
 }
 
 .slide-list-scroll::-webkit-scrollbar-track {
-  background: hsl(var(--editor-dark));
+  background: transparent;
 }
 
 .slide-list-scroll::-webkit-scrollbar-thumb {
-  background: hsl(var(--editor-light));
+  background: linear-gradient(180deg, #8B5CF6, #06B6D4);
   border-radius: 3px;
+  transition: all 0.3s ease;
 }
 
 .slide-list-scroll::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--editor-border));
+  background: linear-gradient(180deg, #7C3AED, #0891B2);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+/* Teljesítmény optimalizáció */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.optimize-animation {
+  animation-fill-mode: both;
+  animation-play-state: running;
+}
+
+/* Dark mode specifikus fejlesztések */
+.dark .glass {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .neon-border {
+  box-shadow: 
+    0 0 10px rgba(139, 92, 246, 0.3),
+    0 0 20px rgba(139, 92, 246, 0.2),
+    0 0 30px rgba(139, 92, 246, 0.1);
 }
