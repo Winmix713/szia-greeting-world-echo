@@ -45,57 +45,11 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
   return debounced as (...args: Parameters<F>) => void;
 }
 
-// --- Típusdefiníciók (MÓDOSÍTVA) ---
-interface CardBorderRadius {
-  topLeft: number;
-  topRight: number;
-  bottomLeft: number;
-  bottomRight: number;
-  unit: "px" | "%" | "em" | "rem";
-}
-
-interface ShadowSettings {
-  x: number;
-  y: number;
-  blur: number;
-  spread: number;
-}
-
-interface CardSettings {
-  bgGradientFrom: string;
-  bgGradientTo?: string;
-  cardOpacity: number;
-  cardBorderRadius: CardBorderRadius;
-  enableHoverEffects: boolean;
-  cardWidth: number;
-  cardHeight: number;
-  bgOpacityFrom: number;
-  bgOpacityTo: number;
-  gradientAngle: number;
-  shadowSettings?: ShadowSettings;
-  shadowColor: string;
-  shadowOpacity: number; // 0-1
-  titleFont: string;
-  titleWeight: string;
-  titleSize: number;
-  titleAlign: "left" | "center" | "right" | "justify";
-  descriptionFont: string;
-  descriptionWeight: string;
-  descriptionSize: number;
-  descriptionAlign: "left" | "center" | "right" | "justify";
-  rotation: number;
-  scaleX: number;
-  scaleY: number;
-  blur: number;
-  brightness: number;
-  contrast: number;
-  saturation: number;
-  enableAnimations: boolean;
-}
+import { CardData } from '@/types/card';
 
 interface DockbarProps {
-  activeCard?: Partial<CardSettings>;
-  updateCard: (updates: Partial<CardSettings>) => void;
+  activeCard?: Partial<CardData>;
+  updateCard: (updates: Partial<CardData>) => void;
 }
 
 // --- Belső UI Komponensek (MÓDOSÍTVA: React.memo, A11y) ---
@@ -204,18 +158,21 @@ const DOCK_TOOLS = [
   { id: "presets", icon: Settings, label: "Smart Presets" },
 ];
 
-const DEFAULT_CARD_SETTINGS: CardSettings = {
+const DEFAULT_CARD_SETTINGS: Partial<CardData> = {
   bgGradientFrom: "#3b82f6",
   bgGradientTo: "#8b5cf6",
   cardOpacity: 100,
-  cardBorderRadius: { topLeft: 12, topRight: 12, bottomLeft: 12, bottomRight: 12, unit: "px" },
+  cardBorderRadius: "12px",
   enableHoverEffects: false,
   cardWidth: 300,
   cardHeight: 200,
   bgOpacityFrom: 100,
   bgOpacityTo: 100,
   gradientAngle: 135,
-  shadowSettings: { x: 0, y: 10, blur: 20, spread: 0 },
+  shadowX: 0,
+  shadowY: 10,
+  shadowBlur: 20,
+  shadowSpread: 0,
   shadowColor: "#000000",
   shadowOpacity: 0.25,
   titleFont: "Inter",
@@ -243,7 +200,7 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
   const debouncedRawUpdateCard = useMemo(() => debounce(rawUpdateCard, 300), [rawUpdateCard]);
 
   const updateCard = useCallback(
-    (updates: Partial<CardSettings>, immediate = false) => {
+    (updates: Partial<CardData>, immediate = false) => {
       if (immediate) {
         rawUpdateCard(updates);
       } else {
@@ -313,17 +270,17 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
   const currentToolData = useMemo(() => DOCK_TOOLS.find((t) => t.id === activeTool), [activeTool]);
   const ToolIcon = currentToolData?.icon;
 
-  const getUniformBorderRadius = useCallback((): number => card.cardBorderRadius.topLeft, [card.cardBorderRadius.topLeft]);
+  const getUniformBorderRadius = useCallback((): number => {
+    const radius = card.cardBorderRadius || "12px";
+    return parseInt(radius.toString().replace(/[^\d]/g, ''), 10) || 12;
+  }, [card.cardBorderRadius]);
 
   const updateUniformBorderRadius = useCallback((value: number) => {
-    const numValue = Math.max(0, value); // Ensure non-negative
+    const numValue = Math.max(0, value);
     updateCard({
-      cardBorderRadius: {
-        topLeft: numValue, topRight: numValue, bottomLeft: numValue, bottomRight: numValue,
-        unit: card.cardBorderRadius.unit,
-      },
+      cardBorderRadius: `${numValue}px`,
     });
-  }, [updateCard, card.cardBorderRadius.unit]);
+  }, [updateCard]);
 
   const handleGradientAngleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     let newAngle = parseInt(e.target.value, 10);
@@ -430,7 +387,7 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
                     <LabeledSlider label="Opacity" value={card.cardOpacity} onValueChange={(val) => updateCard({ cardOpacity: val })} max={100} unit="%" className="flex-1" />
                   </div>
                   <SectionHeader icon={Layers} title="Appearance" />
-                  <LabeledSlider label="Border Radius" value={getUniformBorderRadius()} onValueChange={updateUniformBorderRadius} max={60} unit={card.cardBorderRadius.unit} />
+                  <LabeledSlider label="Border Radius" value={getUniformBorderRadius()} onValueChange={updateUniformBorderRadius} max={60} unit="px" />
                   <div className="bg-gray-800/50 p-3.5 rounded-xl">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
@@ -496,10 +453,10 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
                 <div className="space-y-5">
                   <SectionHeader icon={Box} title="Shadow Properties" iconColorClass="text-green-400" />
                   <div className="grid grid-cols-2 gap-3">
-                    <LabeledSlider label="Offset X" value={card.shadowSettings?.x ?? 0} onValueChange={(val) => updateCard({ shadowSettings: { ...(card.shadowSettings ?? DEFAULT_CARD_SETTINGS.shadowSettings!), x: val }})} min={-50} max={50} unit="px" />
-                    <LabeledSlider label="Offset Y" value={card.shadowSettings?.y ?? 0} onValueChange={(val) => updateCard({ shadowSettings: { ...(card.shadowSettings ?? DEFAULT_CARD_SETTINGS.shadowSettings!), y: val }})} min={-50} max={50} unit="px" />
-                    <LabeledSlider label="Blur" value={card.shadowSettings?.blur ?? 0} onValueChange={(val) => updateCard({ shadowSettings: { ...(card.shadowSettings ?? DEFAULT_CARD_SETTINGS.shadowSettings!), blur: Math.max(0,val) }})} max={100} unit="px" />
-                    <LabeledSlider label="Spread" value={card.shadowSettings?.spread ?? 0} onValueChange={(val) => updateCard({ shadowSettings: { ...(card.shadowSettings ?? DEFAULT_CARD_SETTINGS.shadowSettings!), spread: val }})} min={-50} max={50} unit="px" />
+                    <LabeledSlider label="Offset X" value={card.shadowX ?? 0} onValueChange={(val) => updateCard({ shadowX: val })} min={-50} max={50} unit="px" />
+                    <LabeledSlider label="Offset Y" value={card.shadowY ?? 0} onValueChange={(val) => updateCard({ shadowY: val })} min={-50} max={50} unit="px" />
+                    <LabeledSlider label="Blur" value={card.shadowBlur ?? 0} onValueChange={(val) => updateCard({ shadowBlur: Math.max(0,val) })} max={100} unit="px" />
+                    <LabeledSlider label="Spread" value={card.shadowSpread ?? 0} onValueChange={(val) => updateCard({ shadowSpread: val })} min={-50} max={50} unit="px" />
                   </div>
                   <div className="flex items-end gap-3">
                     <ColorInput label="Color" value={card.shadowColor} onChange={(val) => updateCard({ shadowColor: val }, true)} className="w-16" />
@@ -535,7 +492,7 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
                       <label id="title-align-label" className="text-gray-400 text-xs block mb-1">Alignment</label>
                       <div className="flex gap-1" role="group" aria-labelledby="title-align-label">
                         {[{icon:AlignLeft,value:"left",label:"Align left"},{icon:AlignCenter,value:"center",label:"Align center"},{icon:AlignRight,value:"right",label:"Align right"},{icon:AlignJustify,value:"justify",label:"Justify text"}].map(({icon:Icon,value,label}) => (
-                          <Button key={value} onClick={() => updateCard({titleAlign: value as CardSettings["titleAlign"]},true)} variant={card.titleAlign===value?"secondary":"outline"} size="icon" className={`h-8 w-8 ${card.titleAlign===value?"bg-purple-600/80 border-purple-500/70":"bg-gray-700/70 border-gray-600/60 hover:bg-gray-600/80"}`} aria-label={label} aria-pressed={card.titleAlign===value}><Icon className="w-3.5 h-3.5 text-white"/></Button>
+                          <Button key={value} onClick={() => updateCard({titleAlign: value as "left" | "center" | "right" | "justify"},true)} variant={card.titleAlign===value?"secondary":"outline"} size="icon" className={`h-8 w-8 ${card.titleAlign===value?"bg-purple-600/80 border-purple-500/70":"bg-gray-700/70 border-gray-600/60 hover:bg-gray-600/80"}`} aria-label={label} aria-pressed={card.titleAlign===value}><Icon className="w-3.5 h-3.5 text-white"/></Button>
                         ))}
                       </div>
                     </div>
@@ -564,7 +521,7 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
                       <label id="desc-align-label" className="text-gray-400 text-xs block mb-1">Alignment</label>
                        <div className="flex gap-1" role="group" aria-labelledby="desc-align-label">
                         {[{icon:AlignLeft,value:"left",label:"Align left"},{icon:AlignCenter,value:"center",label:"Align center"},{icon:AlignRight,value:"right",label:"Align right"},{icon:AlignJustify,value:"justify",label:"Justify text"}].map(({icon:Icon,value,label}) => (
-                          <Button key={value} onClick={() => updateCard({descriptionAlign: value as CardSettings["descriptionAlign"]},true)} variant={card.descriptionAlign===value?"secondary":"outline"} size="icon" className={`h-8 w-8 ${card.descriptionAlign===value?"bg-purple-600/80 border-purple-500/70":"bg-gray-700/70 border-gray-600/60 hover:bg-gray-600/80"}`} aria-label={label} aria-pressed={card.descriptionAlign===value}><Icon className="w-3.5 h-3.5 text-white"/></Button>
+                          <Button key={value} onClick={() => updateCard({descriptionAlign: value as "left" | "center" | "right" | "justify"},true)} variant={card.descriptionAlign===value?"secondary":"outline"} size="icon" className={`h-8 w-8 ${card.descriptionAlign===value?"bg-purple-600/80 border-purple-500/70":"bg-gray-700/70 border-gray-600/60 hover:bg-gray-600/80"}`} aria-label={label} aria-pressed={card.descriptionAlign===value}><Icon className="w-3.5 h-3.5 text-white"/></Button>
                         ))}
                       </div>
                     </div>
@@ -598,12 +555,12 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
                   <SectionHeader icon={Settings} title="Smart Presets" iconColorClass="text-purple-300" />
                   <div className="space-y-3">
                     {[
-                      { name: "Glassmorphism", description: "Modern frosted glass", gradient: "from-white/10 to-white/5", config: { bgGradientFrom:"rgba(255,255,255,0.15)", bgGradientTo:"rgba(255,255,255,0.05)", cardBorderRadius:{topLeft:20,topRight:20,bottomLeft:20,bottomRight:20,unit:"px"}, enableHoverEffects:true, cardOpacity:85, shadowColor:"#000000", shadowOpacity:0.1, shadowSettings:{x:0,y:8,blur:32,spread:0} }},
-                      { name: "Neon Glow", description: "Vibrant and energetic", gradient: "from-purple-600 to-blue-600", config: { bgGradientFrom:"#8b5cf6", bgGradientTo:"#3b82f6", cardOpacity:100, shadowColor:"#8b5cf6", shadowOpacity:0.4, shadowSettings:{x:0,y:0,blur:25,spread:2}, enableAnimations:true, titleFont:"Georgia", titleWeight:"700", cardBorderRadius:{topLeft:16,topRight:16,bottomLeft:16,bottomRight:16,unit:"px"} }},
-                      { name: "Gradient Dream", description: "Smooth color transitions", gradient: "from-pink-500 to-violet-600", config: { bgGradientFrom:"#ec4899", bgGradientTo:"#8b5cf6", cardOpacity:100, cardBorderRadius:{topLeft:16,topRight:16,bottomLeft:16,bottomRight:16,unit:"px"}, gradientAngle:45, shadowColor:"#000000", shadowOpacity:0.15, shadowSettings:{x:0,y:6,blur:12,spread:0} }},
-                      { name: "Minimal Clean", description: "Simple and elegant", gradient: "from-gray-100 to-gray-200", config: { bgGradientFrom:"#f3f4f6", bgGradientTo:"#e5e7eb", cardOpacity:100, cardBorderRadius:{topLeft:8,topRight:8,bottomLeft:8,bottomRight:8,unit:"px"}, shadowColor:"#000000", shadowOpacity:0.08, shadowSettings:{x:0,y:4,blur:6,spread:-1} }},
+                      { name: "Glassmorphism", description: "Modern frosted glass", gradient: "from-white/10 to-white/5", config: { bgGradientFrom:"rgba(255,255,255,0.15)", bgGradientTo:"rgba(255,255,255,0.05)", cardBorderRadius:"20px", enableHoverEffects:true, cardOpacity:85, shadowColor:"#000000", shadowOpacity:0.1, shadowX:0, shadowY:8, shadowBlur:32, shadowSpread:0 }},
+                      { name: "Neon Glow", description: "Vibrant and energetic", gradient: "from-purple-600 to-blue-600", config: { bgGradientFrom:"#8b5cf6", bgGradientTo:"#3b82f6", cardOpacity:100, shadowColor:"#8b5cf6", shadowOpacity:0.4, shadowX:0, shadowY:0, shadowBlur:25, shadowSpread:2, enableAnimations:true, titleFont:"Georgia", titleWeight:"700", cardBorderRadius:"16px" }},
+                      { name: "Gradient Dream", description: "Smooth color transitions", gradient: "from-pink-500 to-violet-600", config: { bgGradientFrom:"#ec4899", bgGradientTo:"#8b5cf6", cardOpacity:100, cardBorderRadius:"16px", gradientAngle:45, shadowColor:"#000000", shadowOpacity:0.15, shadowX:0, shadowY:6, shadowBlur:12, shadowSpread:0 }},
+                      { name: "Minimal Clean", description: "Simple and elegant", gradient: "from-gray-100 to-gray-200", config: { bgGradientFrom:"#f3f4f6", bgGradientTo:"#e5e7eb", cardOpacity:100, cardBorderRadius:"8px", shadowColor:"#000000", shadowOpacity:0.08, shadowX:0, shadowY:4, shadowBlur:6, shadowSpread:-1 }},
                     ].map((preset) => (
-                      <button key={preset.name} onClick={() => updateCard(preset.config as Partial<CardSettings>, true)} className="w-full p-3.5 bg-gray-800/60 border border-gray-600/50 rounded-xl text-left hover:border-purple-500/70 transition-colors group focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:ring-offset-gray-800" title={`Apply preset: ${preset.name}`} aria-label={`Apply preset: ${preset.name}`}>
+                      <button key={preset.name} onClick={() => updateCard(preset.config as Partial<CardData>, true)} className="w-full p-3.5 bg-gray-800/60 border border-gray-600/50 rounded-xl text-left hover:border-purple-500/70 transition-colors group focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:ring-offset-gray-800" title={`Apply preset: ${preset.name}`} aria-label={`Apply preset: ${preset.name}`}>
                         <div className="flex items-center gap-2.5"><Sparkles className="w-4 h-4 text-purple-400 flex-shrink-0" /><div className="flex-1"><div className="text-white font-medium text-sm">{preset.name}</div><div className="text-gray-400 text-xs">{preset.description}</div></div></div>
                         <div className={`w-full h-6 rounded-md mt-2.5 bg-gradient-to-r ${preset.gradient}`} aria-hidden="true"></div>
                       </button>
@@ -614,7 +571,7 @@ export default function Dockbar({ activeCard, updateCard: rawUpdateCard }: Dockb
                       const colors=["#ff6b6b","#4ecdc4","#45b7d1","#96ceb4","#ffeaa7","#dda0dd","#98d8c8","#f8a5c2","#6a89cc","#f5cd79","#f78fb3","#ff7f50","#ffdab9","#b2f7ef"];
                       const randomFrom = colors[Math.floor(Math.random()*colors.length)]; let randomTo = colors[Math.floor(Math.random()*colors.length)]; while(randomTo===randomFrom){randomTo=colors[Math.floor(Math.random()*colors.length)];}
                       const randomRadius = Math.floor(Math.random()*45)+5;
-                      updateCard({bgGradientFrom:randomFrom,bgGradientTo:randomTo,gradientAngle:Math.floor(Math.random()*360),rotation:Math.floor(Math.random()*20-10),cardBorderRadius:{topLeft:randomRadius,topRight:randomRadius,bottomLeft:randomRadius,bottomRight:randomRadius,unit:"px"},cardOpacity:Math.floor(Math.random()*20)+80},true);
+                      updateCard({bgGradientFrom:randomFrom,bgGradientTo:randomTo,gradientAngle:Math.floor(Math.random()*360),rotation:Math.floor(Math.random()*20-10),cardBorderRadius:`${randomRadius}px`,cardOpacity:Math.floor(Math.random()*20)+80},true);
                     }} className="w-full bg-gradient-to-r from-purple-600/80 to-pink-600/80 hover:from-purple-700/90 hover:to-pink-700/90 text-white font-medium py-2.5 rounded-lg text-sm flex items-center justify-center gap-2">
                     <Sparkles className="w-3.5 h-3.5" />Randomize Style
                   </Button>
