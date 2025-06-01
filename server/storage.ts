@@ -1,4 +1,3 @@
-
 import { users, cards, templates, presentations, slides, type User, type InsertUser, type Card, type InsertCard, type Template, type InsertTemplate, type Presentation, type InsertPresentation, type Slide, type InsertSlide } from "@shared/schema";
 
 export interface IStorage {
@@ -63,7 +62,7 @@ export class MemStorage implements IStorage {
 
   private initializeData() {
     // Create default presentation
-    const defaultPresentation = this.createPresentation({
+    this.createPresentation({
       title: "Sample Presentation",
       description: "A sample presentation to get started",
     });
