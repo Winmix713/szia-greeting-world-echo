@@ -9,7 +9,6 @@ import CardEditorToolbar from "../components/card-editor/CardEditorToolbar";
 import CardEditorSidebar from "../components/card-editor/CardEditorSidebar";
 import CardPreview from "../components/card-editor/CardPreview";
 import CardEditorBottomBar from "../components/card-editor/CardEditorBottomBar";
-import Dockbar from "../components/dockbar";
 
 export default function CardEditor() {
   const [activeCard, setActiveCard] = useState<CardData>(createDefaultCard());
@@ -62,11 +61,6 @@ export default function CardEditor() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-200 font-sans">
-      <Dockbar
-        activeCard={activeCard}
-        updateCard={updateCard}
-      />
-
       <CardEditorHeader 
         onSave={handleExport}
         onShare={handleShare}
