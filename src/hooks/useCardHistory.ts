@@ -1,41 +1,86 @@
-import { useCallback, useState } from "react";
-import { CardData } from "../types/card";
 
-export const useCardHistory = (initialCard: CardData) => {
+import { useState, useCallback } from 'react';
+import { CardData } from '@/types/card';
+
+interface UseCardHistoryReturn {
+  currentCard: CardData;
+  history: CardData[];
+  historyIndex: number;
+  updateCard: (updates: Partial<CardData>) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
+  addToHistory: () => void;
+  clearHistory: () => void;
+}
+
+export const useCardHistory = (initialCard: CardData): UseCardHistoryReturn => {
+  const [currentCard, setCurrentCard] = useState<CardData>(initialCard);
   const [history, setHistory] = useState<CardData[]>([initialCard]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  const maxHistorySize = 50;
+
+  const updateCard = useCallback((updates: Partial<CardData>) => {
+    setCurrentCard(prev => ({
+      ...prev,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  const addToHistory = useCallback(() => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(currentCard);
+      
+      // Limit history size
+      if (newHistory.length > maxHistorySize) {
+        newHistory.shift();
+        return newHistory;
+      }
+      
+      return newHistory;
+    });
+    
+    setHistoryIndex(prev => Math.min(prev + 1, maxHistorySize - 1));
+  }, [currentCard, historyIndex]);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  const addToHistory = useCallback((card: CardData) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(card);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  }, [history, historyIndex]);
-
   const undo = useCallback(() => {
     if (canUndo) {
-      setHistoryIndex(historyIndex - 1);
-      return history[historyIndex - 1];
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setCurrentCard(history[newIndex]);
     }
-    return null;
   }, [canUndo, historyIndex, history]);
 
   const redo = useCallback(() => {
     if (canRedo) {
-      setHistoryIndex(historyIndex + 1);
-      return history[historyIndex + 1];
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setCurrentCard(history[newIndex]);
     }
-    return null;
   }, [canRedo, historyIndex, history]);
 
+  const clearHistory = useCallback(() => {
+    setHistory([currentCard]);
+    setHistoryIndex(0);
+  }, [currentCard]);
+
   return {
+    currentCard,
+    history,
+    historyIndex,
+    updateCard,
     canUndo,
     canRedo,
-    addToHistory,
     undo,
     redo,
+    addToHistory,
+    clearHistory
   };
 };
