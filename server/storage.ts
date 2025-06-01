@@ -1,5 +1,5 @@
 
-import { users, cards, templates, type User, type InsertUser, type Card, type InsertCard, type Template, type InsertTemplate } from "@shared/schema";
+import { users, cards, templates, presentations, slides, type User, type InsertUser, type Card, type InsertCard, type Template, type InsertTemplate, type Presentation, type InsertPresentation, type Slide, type InsertSlide } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -19,106 +19,70 @@ export interface IStorage {
   createTemplate(template: InsertTemplate): Promise<Template>;
   updateTemplate(id: number, template: Partial<InsertTemplate>): Promise<Template | undefined>;
   deleteTemplate(id: number): Promise<boolean>;
+  
+  // Presentation methods
+  getPresentation(id: number): Promise<Presentation | undefined>;
+  getAllPresentations(): Promise<Presentation[]>;
+  createPresentation(presentation: InsertPresentation): Promise<Presentation>;
+  updatePresentation(id: number, presentation: Partial<InsertPresentation>): Promise<Presentation | undefined>;
+  deletePresentation(id: number): Promise<boolean>;
+  
+  // Slide methods
+  getSlide(id: number): Promise<Slide | undefined>;
+  getSlidesByPresentation(presentationId: number): Promise<Slide[]>;
+  createSlide(slide: InsertSlide): Promise<Slide>;
+  updateSlide(id: number, slide: Partial<InsertSlide>): Promise<Slide | undefined>;
+  deleteSlide(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private cards: Map<number, Card>;
   private templates: Map<number, Template>;
+  private presentations: Map<number, Presentation>;
+  private slides: Map<number, Slide>;
   private currentUserId: number;
   private currentCardId: number;
   private currentTemplateId: number;
+  private currentPresentationId: number;
+  private currentSlideId: number;
 
   constructor() {
     this.users = new Map();
     this.cards = new Map();
     this.templates = new Map();
+    this.presentations = new Map();
+    this.slides = new Map();
     this.currentUserId = 1;
     this.currentCardId = 1;
     this.currentTemplateId = 1;
-    this.initializeTemplates();
+    this.currentPresentationId = 1;
+    this.currentSlideId = 1;
+    this.initializeData();
   }
 
-  private initializeTemplates() {
-    const defaultTemplates: InsertTemplate[] = [
-      {
-        name: "Modern Business",
-        category: "Business",
-        description: "Clean and professional design perfect for corporate presentations",
-        tags: ["professional", "clean", "corporate", "minimal"],
-        preview: "business",
-        author: "Design Studio",
-        downloads: 1250,
-        rating: 4.8,
-        isPremium: false,
-        cardData: {
-          title: "John Anderson",
-          description: "Senior Product Manager",
-          bgGradientFrom: "#667eea",
-          bgGradientTo: "#764ba2",
-          bgOpacityFrom: "0.9",
-          bgOpacityTo: "0.7",
-          cardWidth: "350",
-          cardHeight: "200",
-          cardBorderRadius: {
-            topLeft: "12",
-            topRight: "12",
-            bottomLeft: "12",
-            bottomRight: "12",
-            unit: "px",
-          },
-          shadowSettings: {
-            inset: false,
-            x: "0",
-            y: "8",
-            blur: "25",
-            spread: "0",
-          },
-          shadowColor: "#667eea",
-          shadowOpacity: "0.3",
-        },
-      },
-      {
-        name: "Social Media",
-        category: "Social Media", 
-        description: "Eye-catching gradient design for social media posts",
-        tags: ["social", "gradient", "colorful", "engaging"],
-        preview: "social",
-        author: "Creative Team",
-        downloads: 2100,
-        rating: 4.9,
-        isPremium: false,
-        cardData: {
-          title: "Follow Us Today!",
-          description: "Join our community for daily inspiration",
-          bgGradientFrom: "#ff6b6b",
-          bgGradientTo: "#feca57",
-          bgOpacityFrom: "1",
-          bgOpacityTo: "0.8",
-          cardWidth: "400",
-          cardHeight: "400",
-          cardBorderRadius: {
-            topLeft: "20",
-            topRight: "20",
-            bottomLeft: "20",
-            bottomRight: "20",
-            unit: "px",
-          },
-          shadowSettings: {
-            inset: false,
-            x: "0",
-            y: "15",
-            blur: "35",
-            spread: "0",
-          },
-          shadowColor: "#ff6b6b",
-          shadowOpacity: "0.4",
-        },
-      },
-    ];
+  private initializeData() {
+    // Create default presentation
+    const defaultPresentation = this.createPresentation({
+      title: "Sample Presentation",
+      description: "A sample presentation to get started",
+    });
 
-    defaultTemplates.forEach((template) => {
-      this.createTemplate(template);
+    // Create default slides
+    setTimeout(() => {
+      this.createSlide({
+        presentationId: 1,
+        title: "Welcome Slide",
+        content: { type: "title", text: "Welcome to our presentation" },
+        position: 0,
+      });
+      
+      this.createSlide({
+        presentationId: 1,
+        title: "Content Slide",
+        content: { type: "content", text: "Here's some content" },
+        position: 1,
+      });
     });
   }
 
@@ -156,31 +120,29 @@ export class MemStorage implements IStorage {
       description: insertCard.description || "Live preview with real-time updates",
       bgGradientFrom: insertCard.bgGradientFrom || "#523091",
       bgGradientTo: insertCard.bgGradientTo || "#1a0b33",
-      bgOpacityFrom: insertCard.bgOpacityFrom || "0.70",
-      bgOpacityTo: insertCard.bgOpacityTo || "0.14",
+      bgOpacityFrom: insertCard.bgOpacityFrom || 70,
+      bgOpacityTo: insertCard.bgOpacityTo || 14,
       shadowColor: insertCard.shadowColor || "#7c3aed",
-      shadowOpacity: insertCard.shadowOpacity || "0.3",
+      shadowOpacity: insertCard.shadowOpacity || 0.3,
       enableHoverEffects: insertCard.enableHoverEffects ?? true,
       enableAnimations: insertCard.enableAnimations ?? true,
-      cardWidth: insertCard.cardWidth || "320",
-      cardHeight: insertCard.cardHeight || "200",
-      cardPadding: insertCard.cardPadding || "24",
+      cardWidth: insertCard.cardWidth || 320,
+      cardHeight: insertCard.cardHeight || 200,
+      cardPadding: insertCard.cardPadding || 24,
       cardBorderRadius: insertCard.cardBorderRadius || {
-        topLeft: "16",
-        topRight: "16",
-        bottomLeft: "16",
-        bottomRight: "16",
+        topLeft: 16,
+        topRight: 16,
+        bottomLeft: 16,
+        bottomRight: 16,
         unit: "px",
       },
       cardOpacity: insertCard.cardOpacity || 100,
       shadowSettings: insertCard.shadowSettings || {
-        inset: false,
-        x: "0",
-        y: "30",
-        blur: "50",
-        spread: "0",
+        x: 0,
+        y: 30,
+        blur: 50,
+        spread: 0,
       },
-      shadow2Settings: insertCard.shadow2Settings || null,
       titleFont: insertCard.titleFont || "Inter",
       titleSize: insertCard.titleSize || 18,
       titleWeight: insertCard.titleWeight || "600",
@@ -196,6 +158,7 @@ export class MemStorage implements IStorage {
       brightness: insertCard.brightness || 100,
       contrast: insertCard.contrast || 100,
       saturation: insertCard.saturation || 100,
+      gradientAngle: insertCard.gradientAngle || 135,
       createdAt: now,
       updatedAt: now,
     };
@@ -213,7 +176,6 @@ export class MemStorage implements IStorage {
       id: card.id,
       createdAt: card.createdAt,
       updatedAt: new Date(),
-      shadow2Settings: updates.shadow2Settings !== undefined ? updates.shadow2Settings : card.shadow2Settings,
     };
     this.cards.set(id, updatedCard);
     return updatedCard;
@@ -268,6 +230,92 @@ export class MemStorage implements IStorage {
 
   async deleteTemplate(id: number): Promise<boolean> {
     return this.templates.delete(id);
+  }
+
+  async getPresentation(id: number): Promise<Presentation | undefined> {
+    return this.presentations.get(id);
+  }
+
+  async getAllPresentations(): Promise<Presentation[]> {
+    return Array.from(this.presentations.values());
+  }
+
+  async createPresentation(insertPresentation: InsertPresentation): Promise<Presentation> {
+    const id = this.currentPresentationId++;
+    const now = new Date();
+    const presentation: Presentation = {
+      id,
+      title: insertPresentation.title || "Untitled Presentation",
+      description: insertPresentation.description || null,
+      content: insertPresentation.content || {},
+      isStarred: insertPresentation.isStarred || false,
+      collaborators: insertPresentation.collaborators || [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.presentations.set(id, presentation);
+    return presentation;
+  }
+
+  async updatePresentation(id: number, updates: Partial<InsertPresentation>): Promise<Presentation | undefined> {
+    const presentation = this.presentations.get(id);
+    if (!presentation) return undefined;
+
+    const updatedPresentation: Presentation = {
+      ...presentation,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    this.presentations.set(id, updatedPresentation);
+    return updatedPresentation;
+  }
+
+  async deletePresentation(id: number): Promise<boolean> {
+    return this.presentations.delete(id);
+  }
+
+  async getSlide(id: number): Promise<Slide | undefined> {
+    return this.slides.get(id);
+  }
+
+  async getSlidesByPresentation(presentationId: number): Promise<Slide[]> {
+    return Array.from(this.slides.values())
+      .filter(slide => slide.presentationId === presentationId)
+      .sort((a, b) => a.position - b.position);
+  }
+
+  async createSlide(insertSlide: InsertSlide): Promise<Slide> {
+    const id = this.currentSlideId++;
+    const now = new Date();
+    const slide: Slide = {
+      id,
+      presentationId: insertSlide.presentationId,
+      title: insertSlide.title || "Untitled Slide",
+      content: insertSlide.content || {},
+      position: insertSlide.position || 0,
+      isVisible: insertSlide.isVisible ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.slides.set(id, slide);
+    return slide;
+  }
+
+  async updateSlide(id: number, updates: Partial<InsertSlide>): Promise<Slide | undefined> {
+    const slide = this.slides.get(id);
+    if (!slide) return undefined;
+
+    const updatedSlide: Slide = {
+      ...slide,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    this.slides.set(id, updatedSlide);
+    return updatedSlide;
+  }
+
+  async deleteSlide(id: number): Promise<boolean> {
+    return this.slides.delete(id);
   }
 }
 

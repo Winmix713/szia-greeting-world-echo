@@ -9,51 +9,40 @@ export const cards = pgTable("cards", {
   description: text("description").notNull().default("Live preview with real-time updates"),
   bgGradientFrom: text("bg_gradient_from").notNull().default("#523091"),
   bgGradientTo: text("bg_gradient_to").notNull().default("#1a0b33"),
-  bgOpacityFrom: text("bg_opacity_from").notNull().default("0.70"),
-  bgOpacityTo: text("bg_opacity_to").notNull().default("0.14"),
+  bgOpacityFrom: integer("bg_opacity_from").notNull().default(70),
+  bgOpacityTo: integer("bg_opacity_to").notNull().default(14),
   shadowColor: text("shadow_color").notNull().default("#7c3aed"),
-  shadowOpacity: text("shadow_opacity").notNull().default("0.3"),
+  shadowOpacity: real("shadow_opacity").notNull().default(0.3),
   enableHoverEffects: boolean("enable_hover_effects").notNull().default(true),
   enableAnimations: boolean("enable_animations").notNull().default(true),
-  cardWidth: text("card_width").notNull().default("320"),
-  cardHeight: text("card_height").notNull().default("200"),
-  cardPadding: text("card_padding").notNull().default("24"),
+  cardWidth: integer("card_width").notNull().default(320),
+  cardHeight: integer("card_height").notNull().default(200),
+  cardPadding: integer("card_padding").notNull().default(24),
   cardBorderRadius: jsonb("card_border_radius").$type<{
-    topLeft: string;
-    topRight: string;
-    bottomLeft: string;
-    bottomRight: string;
+    topLeft: number;
+    topRight: number;
+    bottomLeft: number;
+    bottomRight: number;
     unit: string;
   }>().notNull().default({
-    topLeft: "16",
-    topRight: "16",
-    bottomLeft: "16",
-    bottomRight: "16",
+    topLeft: 16,
+    topRight: 16,
+    bottomLeft: 16,
+    bottomRight: 16,
     unit: "px",
   }),
   cardOpacity: integer("card_opacity").notNull().default(100),
   shadowSettings: jsonb("shadow_settings").$type<{
-    inset: boolean;
-    x: string;
-    y: string;
-    blur: string;
-    spread: string;
+    x: number;
+    y: number;
+    blur: number;
+    spread: number;
   }>().notNull().default({
-    inset: false,
-    x: "0",
-    y: "30",
-    blur: "50",
-    spread: "0",
+    x: 0,
+    y: 30,
+    blur: 50,
+    spread: 0,
   }),
-  shadow2Settings: jsonb("shadow2_settings").$type<{
-    inset: boolean;
-    x: string;
-    y: string;
-    blur: string;
-    spread: string;
-    color: string;
-    opacity: string;
-  } | null>().default(null),
   titleFont: text("title_font").default("Inter"),
   titleSize: integer("title_size").default(18),
   titleWeight: text("title_weight").default("600"),
@@ -69,6 +58,7 @@ export const cards = pgTable("cards", {
   brightness: real("brightness").default(100),
   contrast: real("contrast").default(100),
   saturation: real("saturation").default(100),
+  gradientAngle: integer("gradient_angle").default(135),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

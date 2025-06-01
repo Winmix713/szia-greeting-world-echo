@@ -6,10 +6,20 @@ import EditorToolbar from "./editor-toolbar";
 import EditorSidebar from "./editor-sidebar";
 import EditorCanvas from "./editor-canvas";
 import { useToast } from "@/hooks/use-toast";
+import type { Slide } from "@shared/schema";
 
 interface PresentationEditorProps {
   presentationId?: number;
 }
+
+// Type conversion function to ensure compatibility
+const convertSlideData = (rawSlides: any[]): Slide[] => {
+  return rawSlides.map(slide => ({
+    ...slide,
+    isVisible: slide.isVisible ?? true, // Convert null to true
+    id: Number(slide.id), // Ensure id is number
+  }));
+};
 
 export default function PresentationEditor({ presentationId }: PresentationEditorProps) {
   const [currentSlideId, setCurrentSlideId] = useState<number | null>(null);
@@ -18,8 +28,11 @@ export default function PresentationEditor({ presentationId }: PresentationEdito
   const { toast } = useToast();
 
   const { data: presentation, isLoading: presentationLoading } = usePresentation(presentationId);
-  const { data: slides = [], isLoading: slidesLoading } = useSlides(presentationId);
+  const { data: rawSlides = [], isLoading: slidesLoading } = useSlides(presentationId);
   const createPresentation = useCreatePresentation();
+
+  // Convert and type-safe slides
+  const slides = convertSlideData(rawSlides);
 
   // Create default presentation if none exists
   useEffect(() => {

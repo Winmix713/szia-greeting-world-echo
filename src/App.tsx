@@ -193,11 +193,11 @@ const App: React.FC = () => {
     const bgToRgb = hexToRgb(activeCard.bgGradientTo || "#1a0b33");
     const shadowRgb = hexToRgb(activeCard.shadowColor || "#7c3aed");
 
-    const shadow = `${activeCard.shadowSettings?.x || "0"}px ${
-      activeCard.shadowSettings?.y || "30"
-    }px ${activeCard.shadowSettings?.blur || "50"}px ${activeCard.shadowSettings?.spread || "0"}px rgba(${
+    const shadow = `${activeCard.shadowSettings?.x || 0}px ${
+      activeCard.shadowSettings?.y || 30
+    }px ${activeCard.shadowSettings?.blur || 50}px ${activeCard.shadowSettings?.spread || 0}px rgba(${
       shadowRgb.r
-    }, ${shadowRgb.g}, ${shadowRgb.b}, ${activeCard.shadowOpacity || "0.3"})`;
+    }, ${shadowRgb.g}, ${shadowRgb.b}, ${activeCard.shadowOpacity || 0.3})`;
 
     const transform = `rotate(${activeCard.rotation || 0}deg) scaleX(${activeCard.scaleX || 1}) scaleY(${activeCard.scaleY || 1})`;
 
