@@ -1,414 +1,463 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ZoomIn, 
-  ZoomOut, 
-  Maximize, 
-  RotateCcw, 
-  Grid3X3,
-  Eye,
-  EyeOff,
-  Move,
-  MousePointer
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { CardData } from '@/types/card';
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ZoomOut,
+  ZoomIn,
+  Maximize,
+  Grid,
+  Ruler,
+  MousePointer,
+  Loader2,
+} from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
-interface EditorCanvasProps {
-  activeCard?: Partial<CardData>;
-  children?: React.ReactNode;
-  onCardUpdate?: (updates: Partial<CardData>) => void;
-  showGrid?: boolean;
-  onGridToggle?: () => void;
+// Konstansok
+const SLIDE_DIMENSIONS = {
+  width: 720,
+  height: 540,
+  aspectRatio: "16:9",
+} as const;
+
+const ZOOM_LIMITS = {
+  min: 25,
+  max: 200,
+  step: 25,
+} as const;
+
+const ZOOM_OPTIONS = [25, 50, 75, 100, 125, 150, 200];
+
+// Típusok
+interface Slide {
+  id: string;
+  title: string;
+  content?: string;
 }
 
-export default function EditorCanvas({
-  activeCard,
-  children,
-  onCardUpdate,
-  showGrid = false,
-  onGridToggle,
-}: EditorCanvasProps) {
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(100);
-  const [isPanning, setIsPanning] = useState(false);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [showPreview, setShowPreview] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+interface EditorCanvasProps {
+  currentSlide?: Slide | null;
+  currentSlideIndex: number;
+  totalSlides: number;
+  zoomLevel: number;
+  onZoomChange: (zoom: number) => void;
+  onSlideChange: (direction: "prev" | "next") => void;
+  isLoading?: boolean;
+}
 
-  // Canvas controls
-  const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(prev + 25, 300));
+// Segédfüggvények
+const generateRulerMarks = (
+  zoomLevel: number,
+  isHorizontal: boolean = true,
+) => {
+  const step = zoomLevel < 50 ? 100 : zoomLevel < 100 ? 50 : 25;
+  const count = isHorizontal ? 20 : 15;
+
+  return Array.from({ length: count }, (_, i) => ({
+    position: i * (100 / count),
+    value: i * step,
+  }));
+};
+
+export default function EditorCanvas({
+  currentSlide,
+  currentSlideIndex,
+  totalSlides,
+  zoomLevel,
+  onZoomChange,
+  onSlideChange,
+  isLoading = false,
+}: EditorCanvasProps) {
+  const [showGrid, setShowGrid] = useState(false);
+  const [showRulers, setShowRulers] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Responsive ellenőrzés
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Zoom handlers - optimalizálva useCallback-kel
+  const handleZoomIn = useCallback(() => {
+    if (zoomLevel < ZOOM_LIMITS.max) {
+      onZoomChange(Math.min(ZOOM_LIMITS.max, zoomLevel + ZOOM_LIMITS.step));
+    }
+  }, [zoomLevel, onZoomChange]);
 
   const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(prev - 25, 25));
-  }, []);
+    if (zoomLevel > ZOOM_LIMITS.min) {
+      onZoomChange(Math.max(ZOOM_LIMITS.min, zoomLevel - ZOOM_LIMITS.step));
+    }
+  }, [zoomLevel, onZoomChange]);
 
-  const handleZoomReset = useCallback(() => {
-    setZoom(100);
-    setPanOffset({ x: 0, y: 0 });
-  }, []);
+  const handleZoomSelect = useCallback(
+    (value: string) => {
+      onZoomChange(parseInt(value));
+    },
+    [onZoomChange],
+  );
 
   const handleFitToScreen = useCallback(() => {
-    if (!canvasRef.current || !activeCard) return;
+    onZoomChange(100);
+  }, [onZoomChange]);
 
-    const canvas = canvasRef.current;
-    const canvasRect = canvas.getBoundingClientRect();
-    const cardWidth = activeCard.cardWidth || 300;
-    const cardHeight = activeCard.cardHeight || 200;
-
-    const scaleX = (canvasRect.width * 0.8) / cardWidth;
-    const scaleY = (canvasRect.height * 0.8) / cardHeight;
-    const newZoom = Math.min(scaleX, scaleY) * 100;
-
-    setZoom(Math.max(25, Math.min(300, newZoom)));
-    setPanOffset({ x: 0, y: 0 });
-  }, [activeCard]);
-
-  // Pan controls
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) { // Middle click or Ctrl+click
-      setIsPanning(true);
-      setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+  // Slide navigáció handlers
+  const handlePrevSlide = useCallback(() => {
+    if (currentSlideIndex > 0) {
+      onSlideChange("prev");
     }
-  }, [panOffset]);
+  }, [currentSlideIndex, onSlideChange]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isPanning) {
-      setPanOffset({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
+  const handleNextSlide = useCallback(() => {
+    if (currentSlideIndex < totalSlides - 1) {
+      onSlideChange("next");
     }
-  }, [isPanning, dragStart]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+  }, [currentSlideIndex, totalSlides, onSlideChange]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
-          case '=':
-          case '+':
+          case "=":
+          case "+":
             e.preventDefault();
             handleZoomIn();
             break;
-          case '-':
+          case "-":
             e.preventDefault();
             handleZoomOut();
             break;
-          case '0':
-            e.preventDefault();
-            handleZoomReset();
-            break;
-          case '1':
+          case "0":
             e.preventDefault();
             handleFitToScreen();
-            break;
-          case 'g':
-            e.preventDefault();
-            onGridToggle?.();
             break;
         }
       }
 
-      if (e.key === ' ') {
-        e.preventDefault();
-        setShowPreview(!showPreview);
+      // Arrow navigáció
+      if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        switch (e.key) {
+          case "ArrowLeft":
+            e.preventDefault();
+            handlePrevSlide();
+            break;
+          case "ArrowRight":
+            e.preventDefault();
+            handleNextSlide();
+            break;
+        }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleZoomIn, handleZoomOut, handleZoomReset, handleFitToScreen, onGridToggle, showPreview]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    handleZoomIn,
+    handleZoomOut,
+    handleFitToScreen,
+    handlePrevSlide,
+    handleNextSlide,
+  ]);
 
-  // Card style generation
-  const getCardStyle = useCallback((): React.CSSProperties => {
-    if (!activeCard) return {};
+  // Memorizált ruler jelölések
+  const horizontalRulerMarks = useMemo(
+    () => generateRulerMarks(zoomLevel, true),
+    [zoomLevel],
+  );
+  const verticalRulerMarks = useMemo(
+    () => generateRulerMarks(zoomLevel, false),
+    [zoomLevel],
+  );
 
-    const {
-      cardWidth = 300,
-      cardHeight = 200,
-      bgGradientFrom = '#3b82f6',
-      bgGradientTo,
-      cardOpacity = 100,
-      cardBorderRadius = '12px',
-      gradientAngle = 135,
-      shadowX = 0,
-      shadowY = 10,
-      shadowBlur = 20,
-      shadowSpread = 0,
-      shadowColor = '#000000',
-      shadowOpacity = 0.25,
-      rotation = 0,
-      scaleX = 1,
-      scaleY = 1,
-      blur = 0,
-      brightness = 100,
-      contrast = 100,
-      saturation = 100,
-    } = activeCard;
-
-    const background = bgGradientTo
-      ? `linear-gradient(${gradientAngle}deg, ${bgGradientFrom}, ${bgGradientTo})`
-      : bgGradientFrom;
-
-    const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}${Math.round(shadowOpacity * 255).toString(16).padStart(2, '0')}`;
-
-    const filter = `blur(${blur}px) brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-
-    return {
-      width: cardWidth,
-      height: cardHeight,
-      background,
-      opacity: cardOpacity / 100,
-      borderRadius: cardBorderRadius,
-      boxShadow,
-      transform: `rotate(${rotation}deg) scaleX(${scaleX}) scaleY(${scaleY})`,
-      filter,
-      transition: 'all 0.3s ease',
-    };
-  }, [activeCard]);
+  // Loading állapot
+  if (isLoading) {
+    return (
+      <main className="flex-1 bg-gray-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <p className="text-gray-600">Loading presentation...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <div className="relative w-full h-full bg-gray-100 overflow-hidden">
-      {/* Canvas Controls */}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
-        <Button
-          onClick={handleZoomOut}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          title="Zoom Out (Ctrl+-)"
-        >
-          <ZoomOut className="w-4 h-4" />
-        </Button>
+    <main
+      className="flex-1 bg-gray-100 flex flex-col relative"
+      role="application"
+      aria-label="Slide editor canvas"
+    >
+      {/* Canvas Header */}
+      <div className="h-10 bg-white border-b border-gray-200 flex items-center justify-between px-4">
+        {/* Left: Slide Navigation */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePrevSlide}
+            disabled={currentSlideIndex === 0}
+            className="h-7 w-7 p-0 hover:bg-gray-100 disabled:opacity-50"
+            title="Previous Slide (← Arrow)"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="h-4 w-4 text-gray-600" />
+          </Button>
 
-        <div className="flex items-center gap-2 px-2">
-          <Slider
-            value={[zoom]}
-            onValueChange={([value]) => setZoom(value)}
-            min={25}
-            max={300}
-            step={25}
-            className="w-20"
-          />
-          <span className="text-xs font-mono min-w-[40px] text-center">
-            {zoom}%
+          <span
+            className="text-sm text-gray-600 font-medium min-w-[80px] text-center"
+            aria-live="polite"
+          >
+            {totalSlides > 0
+              ? `${currentSlideIndex + 1} / ${totalSlides}`
+              : "0 / 0"}
           </span>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNextSlide}
+            disabled={currentSlideIndex >= totalSlides - 1}
+            className="h-7 w-7 p-0 hover:bg-gray-100 disabled:opacity-50"
+            title="Next Slide (→ Arrow)"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-4 w-4 text-gray-600" />
+          </Button>
         </div>
 
-        <Button
-          onClick={handleZoomIn}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          title="Zoom In (Ctrl++)"
-        >
-          <ZoomIn className="w-4 h-4" />
-        </Button>
+        {/* Center: View Tools */}
+        {!isMobile && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showGrid ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowGrid(!showGrid)}
+              className="h-7 px-2 text-xs"
+              title="Toggle Grid"
+              aria-pressed={showGrid}
+            >
+              <Grid className="h-3 w-3 mr-1" />
+              Grid
+            </Button>
 
-        <div className="w-px h-6 bg-gray-300" />
+            <Button
+              variant={showRulers ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowRulers(!showRulers)}
+              className="h-7 px-2 text-xs"
+              title="Toggle Rulers"
+              aria-pressed={showRulers}
+            >
+              <Ruler className="h-3 w-3 mr-1" />
+              Rulers
+            </Button>
+          </div>
+        )}
 
-        <Button
-          onClick={handleZoomReset}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          title="Reset Zoom (Ctrl+0)"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </Button>
+        {/* Right: Zoom Controls */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleZoomOut}
+            disabled={zoomLevel <= ZOOM_LIMITS.min}
+            className="h-7 w-7 p-0 hover:bg-gray-100 disabled:opacity-50"
+            title="Zoom Out (Ctrl + -)"
+            aria-label="Zoom out"
+          >
+            <ZoomOut className="h-3 w-3 text-gray-600" />
+          </Button>
 
-        <Button
-          onClick={handleFitToScreen}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          title="Fit to Screen (Ctrl+1)"
-        >
-          <Maximize className="w-4 h-4" />
-        </Button>
+          <Select value={zoomLevel.toString()} onValueChange={handleZoomSelect}>
+            <SelectTrigger
+              className="w-20 h-7 text-xs bg-white border-gray-200 focus:border-blue-500"
+              aria-label="Zoom level"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ZOOM_OPTIONS.map((zoom) => (
+                <SelectItem key={zoom} value={zoom.toString()}>
+                  {zoom}%
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <div className="w-px h-6 bg-gray-300" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleZoomIn}
+            disabled={zoomLevel >= ZOOM_LIMITS.max}
+            className="h-7 w-7 p-0 hover:bg-gray-100 disabled:opacity-50"
+            title="Zoom In (Ctrl + +)"
+            aria-label="Zoom in"
+          >
+            <ZoomIn className="h-3 w-3 text-gray-600" />
+          </Button>
 
-        <Button
-          onClick={onGridToggle}
-          variant={showGrid ? "secondary" : "ghost"}
-          size="sm"
-          className="h-8 w-8 p-0"
-          title="Toggle Grid (Ctrl+G)"
-        >
-          <Grid3X3 className="w-4 h-4" />
-        </Button>
+          <Separator orientation="vertical" className="h-4 mx-1" />
 
-        <Button
-          onClick={() => setShowPreview(!showPreview)}
-          variant={showPreview ? "secondary" : "ghost"}
-          size="sm"
-          className="h-8 w-8 p-0"
-          title="Toggle Preview (Space)"
-        >
-          {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </Button>
-      </div>
-
-      {/* Canvas Info */}
-      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          {isPanning ? (
-            <Move className="w-3 h-3" />
-          ) : (
-            <MousePointer className="w-3 h-3" />
-          )}
-          <span>
-            {activeCard?.cardWidth || 300} × {activeCard?.cardHeight || 200}px
-          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleFitToScreen}
+            className="h-7 w-7 p-0 hover:bg-gray-100"
+            title="Fit to Screen (Ctrl + 0)"
+            aria-label="Fit to screen"
+          >
+            <Maximize className="h-3 w-3 text-gray-600" />
+          </Button>
         </div>
       </div>
 
       {/* Canvas Area */}
-      <div
-        ref={canvasRef}
-        className={`relative w-full h-full overflow-hidden ${
-          isPanning ? 'cursor-grabbing' : 'cursor-grab'
-        }`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        style={{
-          backgroundImage: showGrid
-            ? `
-              linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
-            `
-            : undefined,
-          backgroundSize: showGrid ? '20px 20px' : undefined,
-          backgroundPosition: showGrid ? `${panOffset.x}px ${panOffset.y}px` : undefined,
-        }}
-      >
-        {/* Canvas Content */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Rulers */}
+        {showRulers && !isMobile && (
+          <>
+            {/* Horizontal Ruler */}
+            <div className="absolute top-0 left-8 right-0 h-8 bg-white border-b border-gray-200 z-10">
+              <div className="h-full relative">
+                {horizontalRulerMarks.map((mark, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-0 w-px h-full bg-gray-300"
+                    style={{ left: `${mark.position}%` }}
+                  >
+                    <span className="absolute top-1 left-1 text-xs text-gray-500">
+                      {mark.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Vertical Ruler */}
+            <div className="absolute top-8 left-0 bottom-0 w-8 bg-white border-r border-gray-200 z-10">
+              <div className="w-full relative h-full">
+                {verticalRulerMarks.map((mark, i) => (
+                  <div
+                    key={i}
+                    className="absolute left-0 w-full h-px bg-gray-300"
+                    style={{ top: `${mark.position}%` }}
+                  >
+                    <span className="absolute left-1 top-1 text-xs text-gray-500 rotate-90 origin-top-left">
+                      {mark.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Corner */}
+            <div className="absolute top-0 left-0 w-8 h-8 bg-white border-r border-b border-gray-200 z-20" />
+          </>
+        )}
+
+        {/* Main Canvas */}
         <div
-          className="flex items-center justify-center w-full h-full"
+          className={`w-full h-full flex items-center justify-center p-4 md:p-8 ${
+            showRulers && !isMobile ? "pl-16 pt-16" : ""
+          }`}
           style={{
-            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom / 100})`,
-            transformOrigin: 'center',
+            backgroundImage: showGrid
+              ? "radial-gradient(circle, #e5e5e5 1px, transparent 1px)"
+              : "none",
+            backgroundSize: showGrid ? "20px 20px" : "auto",
           }}
         >
-          {/* Card Preview */}
-          <motion.div
-            className="relative bg-white shadow-xl flex items-center justify-center"
-            style={getCardStyle()}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
+          {/* Slide Container */}
+          <div
+            className="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-200 transition-transform duration-200"
+            style={{
+              width: `${SLIDE_DIMENSIONS.width}px`,
+              height: `${SLIDE_DIMENSIONS.height}px`,
+              transform: `scale(${zoomLevel / 100})`,
+              transformOrigin: "center",
+              maxWidth: isMobile ? "90vw" : "none",
+              maxHeight: isMobile ? "60vh" : "none",
+            }}
           >
-            {/* Card Content */}
-            <div className="p-6 text-center">
-              <h3 
-                className="font-semibold mb-2"
-                style={{
-                  fontFamily: activeCard?.titleFont || 'Inter',
-                  fontWeight: activeCard?.titleWeight || '600',
-                  fontSize: `${activeCard?.titleSize || 18}px`,
-                  textAlign: (activeCard?.titleAlign as any) || 'left',
-                  color: '#1f2937',
-                }}
-              >
-                Sample Card Title
-              </h3>
-              <p 
-                className="text-gray-600"
-                style={{
-                  fontFamily: activeCard?.descriptionFont || 'Inter',
-                  fontWeight: activeCard?.descriptionWeight || '400',
-                  fontSize: `${activeCard?.descriptionSize || 14}px`,
-                  textAlign: (activeCard?.descriptionAlign as any) || 'left',
-                }}
-              >
-                This is a sample description for your card design. It shows how your text styling will look.
-              </p>
-            </div>
-
-            {/* Card Border Indicator */}
-            <div className="absolute inset-0 border-2 border-blue-500/20 rounded-lg pointer-events-none" />
-
-            {/* Resize Handles */}
-            <div className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 rounded-full shadow-md" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full shadow-md" />
-            <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-500 rounded-full shadow-md" />
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-500 rounded-full shadow-md" />
-          </motion.div>
+            {currentSlide ? (
+              <div className="w-full h-full flex flex-col">
+                {/* Slide Content */}
+                <div className="flex-1 p-8 flex flex-col justify-center">
+                  <h1 className="text-4xl font-bold text-gray-900 mb-6">
+                    {currentSlide.title}
+                  </h1>
+                  <div className="text-lg text-gray-600 leading-relaxed">
+                    {currentSlide.content ? (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: currentSlide.content,
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <p>
+                          This is slide content. You can add text, images, and
+                          other elements here.
+                        </p>
+                        <p className="mt-4">
+                          Use the toolbar above to add and format content.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <div className="text-center">
+                  <MousePointer className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">
+                    Select a slide to start editing
+                  </p>
+                  <p className="text-sm">Or create a new slide to begin</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Additional Canvas Content */}
-        {children}
       </div>
 
-      {/* Preview Mode Overlay */}
-      <AnimatePresence>
-        {showPreview && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center"
-          >
-            <div className="text-center">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                className="bg-white shadow-2xl mb-4"
-                style={getCardStyle()}
-              >
-                <div className="p-6 text-center">
-                  <h3 
-                    className="font-semibold mb-2"
-                    style={{
-                      fontFamily: activeCard?.titleFont || 'Inter',
-                      fontWeight: activeCard?.titleWeight || '600',
-                      fontSize: `${activeCard?.titleSize || 18}px`,
-                      textAlign: (activeCard?.titleAlign as any) || 'left',
-                      color: '#1f2937',
-                    }}
-                  >
-                    Sample Card Title
-                  </h3>
-                  <p 
-                    className="text-gray-600"
-                    style={{
-                      fontFamily: activeCard?.descriptionFont || 'Inter',
-                      fontWeight: activeCard?.descriptionWeight || '400',
-                      fontSize: `${activeCard?.descriptionSize || 14}px`,
-                      textAlign: (activeCard?.descriptionAlign as any) || 'left',
-                    }}
-                  >
-                    This is a sample description for your card design.
-                  </p>
-                </div>
-              </motion.div>
-              <p className="text-white/60 text-sm">
-                Press <kbd className="bg-white/20 px-2 py-1 rounded">Space</kbd> to exit preview
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Pan Instruction */}
-      {!isPanning && (
-        <div className="absolute bottom-4 left-4 text-xs text-gray-500 bg-white/80 backdrop-blur-sm rounded px-2 py-1">
-          Hold Ctrl+Click or Middle Click to pan
+      {/* Status Bar */}
+      <div className="h-8 bg-white border-t border-gray-200 flex items-center justify-between px-4 text-xs text-gray-500">
+        <div className="flex items-center gap-4">
+          <span>Ready</span>
+          <span>•</span>
+          <span>Auto-save: On</span>
+          {isMobile && (
+            <>
+              <span>•</span>
+              <span>Mobile View</span>
+            </>
+          )}
         </div>
-      )}
-    </div>
+        <div className="flex items-center gap-4">
+          <span>{SLIDE_DIMENSIONS.aspectRatio} Aspect Ratio</span>
+          <span>•</span>
+          <span>{zoomLevel}% Zoom</span>
+          {!isMobile && (
+            <>
+              <span>•</span>
+              <span>1920 × 1080</span>
+            </>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
