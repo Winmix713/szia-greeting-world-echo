@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => ({
     host: "::", // vagy 'localhost', ha IPv6 nem kell
     port: 8080,
     open: true, // automatikus böngészőnyitás indításkor
+    allowedHosts: ["c1496f55-518b-44b2-90ce-e3fb3e88ca82-00-1svwsup4bgar.kirk.replit.dev"],
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
   },
   plugins: [
     react(),
